@@ -261,24 +261,21 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--tx);
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script type="module">
-import{initializeApp}from"https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import{getFirestore,doc,getDoc,setDoc,onSnapshot}from"https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
-const FB={apiKey:"AIzaSyDVCtUXZfOdpjLRRRVDRTZ0eFd3wZTm0xk",authDomain:"yushi-schedule.firebaseapp.com",projectId:"yushi-schedule",storageBucket:"yushi-schedule.firebasestorage.app",messagingSenderId:"752587780710",appId:"1:752587780710:web:7cf75c75cb740e874f33a7"};
-const db=getFirestore(initializeApp(FB));
-const REF=doc(db,'schedule','main');
+const API='https://yushi-schedule-api.yushidesign.workers.dev';
 const LS='sched2026_v2';
 const WD=['日','一','二','三','四','五','六'];
 const COLS=['#2B5BA8','#1B7A52','#C8410A','#7B3BAF','#A83030','#2B7AA8','#7A6B1B','#8B2E6E','#1B6B7A','#5A5A8A'];
 const MN=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 let S={workers:['工作者 A','工作者 B'],months:[{year:2026,month:3},{year:2026,month:4},{year:2026,month:5},{year:2026,month:6}],projects:[{id:'p1',name:'專案一',color:COLS[0]},{id:'p2',name:'專案二',color:COLS[1]}],data:{},taskHistory:[],selectedColor:COLS[2]};
-let mw=0,ignSnap=false,saveT=null;
+let mw=0,lastSaved=null,saveT=null,pollT=null;
 let edit={dk:'',tA:[],tB:[],kd:false,kn:''};
 const isMob=()=>window.innerWidth<=768;
 
 function ss(t){const d=document.getElementById('sdot'),x=document.getElementById('stxt');if(t==='s'){d.className='sdot sy';x.textContent='同步中…';}else if(t==='ok'){d.className='sdot';x.textContent='已同步';}else{d.className='sdot er';x.textContent='同步失敗';}}
-async function push(){try{ss('s');S.workers=[n1(),n2()];ignSnap=true;await setDoc(REF,S);ss('ok');}catch(e){console.error(e);ss('er');}}
+async function push(){try{ss('s');S.workers=[n1(),n2()];const body=JSON.stringify(S);lastSaved=body;await fetch(API,{method:'PUT',headers:{'Content-Type':'application/json'},body});ss('ok');}catch(e){console.error(e);ss('er');}}
 function sched(){clearTimeout(saveT);saveT=setTimeout(push,800);}
-onSnapshot(REF,snap=>{if(ignSnap){ignSnap=false;return;}if(snap.exists()){S=snap.data();apply();ss('ok');}});
+async function poll(){try{const r=await fetch(API);const remote=await r.text();if(remote&&remote!=='null'&&remote!==lastSaved){const d=JSON.parse(remote);lastSaved=remote;S=d;apply();ss('ok');}}catch(e){}}
+function startPoll(){clearInterval(pollT);pollT=setInterval(poll,5000);}
 function dk(y,m,d){return`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
 function wdk(w,k){return`w${w}_${k}`;}
 function gdd(w,k){const key=wdk(w,k);if(!S.data[key])S.data[key]={tasks:[],keyDate:false,keyNote:''};return S.data[key];}
@@ -468,11 +465,12 @@ function checkMig(){
 }
 window.doMig=async function(){const raw=localStorage.getItem(LS);if(!raw)return;try{const p=JSON.parse(raw);S={...S,...p};await push();apply();localStorage.removeItem(LS);document.getElementById('migwrap').innerHTML='';alert('上傳完成！');}catch(e){alert('上傳失敗');}};
 (async()=>{
-  try{const snap=await getDoc(REF);if(snap.exists())S=snap.data();apply();ss('ok');}
+  try{const r=await fetch(API);const data=await r.json();if(data){S=data;lastSaved=JSON.stringify(data);}apply();ss('ok');}
   catch(e){console.error(e);ss('er');apply();}
   document.getElementById('loading').style.display='none';
   document.getElementById('app').style.display='block';
   checkMig();
+  startPoll();
 })();
 </script>
 </body>

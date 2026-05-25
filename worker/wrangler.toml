@@ -1,0 +1,7 @@
+name = "yushi-schedule-api"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "SCHEDULE_KV"
+id = "2156a8e08e0343b1850293cf2806484a"
